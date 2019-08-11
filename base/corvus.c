@@ -17,7 +17,7 @@ struct con_info * con_info_new(struct context *ctx);
 void context_init(struct context*ctx,int bufsize)
 {
     ctx->mbuf_offset=bufsize-sizeof(struct mbuf);
-    ctx->mstats.free_buffers = 0;
+    memset(&(ctx->mstats),0,sizeof(struct memory_stats));
     TAILQ_INIT(&ctx->free_mbufq);
     STAILQ_INIT(&ctx->free_con_infoq);
 
@@ -54,7 +54,8 @@ int  context_free_content(struct context *ctx)
 void print_stats(struct context *ctx)
 {
     LOG(DEBUG,"total %lld connections in use\n",ctx->mstats.conns);
-    LOG(DEBUG,"total  %lld free connections\n",ctx->mstats.free_conns);
+    LOG(DEBUG,"total %lld free connections\n",ctx->mstats.free_conns);
+    LOG(DEBUG,"total %lld mbufs alloc\n",ctx->mstats.total_buffers);
     LOG(DEBUG,"total %lld mbufs in use\n",ctx->mstats.buffers);
     LOG(DEBUG,"total %lld free mbufs\n",ctx->mstats.free_buffers);
     LOG(DEBUG,"total %lld info in use\n",ctx->mstats.conn_info);
@@ -184,21 +185,24 @@ void con_buf_write(struct connection *con,void*data,int len)
 int  con_buf_read(struct connection *con,void *dst,int len)
 {
     int i=0;
-    int read=0;
+    int read=con->data_size;
     struct con_info *info=con->info;
-    while(mhdr_readable(&info->data))
+    int allow_read=0;
+    allow_read=len>read?read:len;
+    read=0;
+    while(mhdr_readable(&info->data)&&allow_read)
     {
     int ret=0;
     struct mbuf *buf=TAILQ_FIRST(&info->data);
     ret=mbuf_read(buf,dst,len);
-    len-=ret;
+    allow_read-=ret;
     read+=ret;
     dst+=ret;
-    if(mbuf_read_size(buf)){
-        break;
-    }else{
+    if(mbuf_can_recycle(buf)){
         TAILQ_REMOVE(&info->data,buf,next);
-        mbuf_recycle(con->ctx,buf);
+        mbuf_recycle(con->ctx,buf);        
+    }else{
+        break;
     }
     }
     con->data_size-=read;

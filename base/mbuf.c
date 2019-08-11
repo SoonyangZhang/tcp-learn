@@ -19,6 +19,7 @@ static struct mbuf *mbuf_create(struct context *ctx)
         if (buf == NULL) {
             return NULL;
         }
+        ctx->mstats.total_buffers++;
         mbuf = (struct mbuf *)(buf + ctx->mbuf_offset);
     }
     return mbuf;
@@ -57,6 +58,7 @@ void mbuf_recycle(struct context *ctx, struct mbuf *mbuf)
     ctx->mstats.buffers--;
 
     if (ctx->mstats.free_buffers > RECYCLE_LENGTH) {
+        ctx->mstats.total_buffers--;
         mbuf_free(ctx, mbuf);
         return;
     }
@@ -108,6 +110,13 @@ void mbuf_destroy(struct context *ctx)
         mbuf_free(ctx, buf);
         ctx->mstats.free_buffers--;
     }
+}
+bool mbuf_can_recycle(struct mbuf * mbuf){
+    bool ret=false;
+    if((mbuf_read_size(mbuf)==0)&&(mbuf_write_size(mbuf)==0)){
+        ret=true;
+    }
+    return ret;
 }
 bool mhdr_readable(struct mhdr *header){
     bool ret=false;

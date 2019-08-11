@@ -35,6 +35,7 @@ int mbuf_write_size(struct mbuf *);
 int mbuf_write(struct mbuf * mbuf,void *data,int len);
 int mbuf_read(struct mbuf * mbuf,void*dst,int len);
 int mbuf_peek(struct mbuf * mbuf,void*dst,int len);
+bool mbuf_can_recycle(struct mbuf * mbuf);
 bool mhdr_readable(struct mhdr *header);
 #ifdef __cplusplus
 }

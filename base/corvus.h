@@ -7,10 +7,12 @@
 extern "C" {
 #endif
 struct memory_stats {
+    int64_t total_buffers;
     int64_t buffers;
+    int64_t free_buffers;
     int64_t conns;
     int64_t conn_info;
-    int64_t free_buffers;
+    
     int64_t free_conns;
     int64_t free_conn_info;
 };

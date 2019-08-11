@@ -31,3 +31,8 @@ target_link_libraries(${EXECUTABLE_NAME}  base pthread)
 set(EXECUTABLE_NAME "client")
 add_executable(${EXECUTABLE_NAME} client.cc )
 target_link_libraries(${EXECUTABLE_NAME}  base pthread)
+
+set(EXECUTABLE_NAME "mbuf")
+add_executable(${EXECUTABLE_NAME} base/mbuf_test.c )
+target_link_libraries(${EXECUTABLE_NAME}  base)
+

@@ -15,55 +15,17 @@ void signal_exit_handler(int sig)
 const char *serv_ip="127.0.0.1";
 uint16_t port=1234;
 //refer from https://blog.csdn.net/hnlyyk/article/details/48974749
-class ImageData;
 class ImageDelegate{
 public:
     virtual void DataAvailable(uint32_t)=0;
     virtual ~ImageDelegate(){}
 };
-class ImageData{
-public:
-    ImageData(){}
-    void ResetImageLen(uint32_t len){
-        if(len){
-            write_=0;
-            len_=len;
-            buf_.reset(new uint8_t [len_]);
-        }
-    }
-    int Append(uint8_t *data,uint32_t len){
-        int ret=0;
-        uint32_t to_write=std::min(len,len_-write_);
-        if(buf_&&to_write){
-            memcpy((void*)buf_.get(),data,to_write);
-            write_+=to_write;
-            ret=to_write;
-        }
-        return ret;
-    }
-    uint8_t *data() const{
-        return (uint8_t*)buf_.get();
-    }
-    uint32_t length() const{
-        return len_;
-    }
-    uint32_t Full(){
-        bool ret=false;
-        if(write_&&len_&&(write_==len_)){
-            return true;
-        }
-    }
-private:
-    std::unique_ptr<uint8_t []> buf_;
-    uint32_t write_{0};
-    uint32_t len_{0};
-};
 const int mbuf_size=1024;
 class TcpClient{
 public:
-    TcpClient(su_socket fd):TcpClient(fd,nullptr){}
-    TcpClient(su_socket fd,ImageDelegate *d):fd_(fd),delegate_(d){
-        context_=(struct context*)context_new(mbuf_size);
+    TcpClient(su_socket fd,struct context *context):TcpClient(fd,context,nullptr){}
+    TcpClient(su_socket fd, struct context *context,ImageDelegate *d):fd_(fd),context_(context),delegate_(d){
+        
         con_=context_connection_new(context_);
     }
     ~TcpClient(){
@@ -71,8 +33,6 @@ public:
             if(con_){
                 context_conn_recyle(context_,con_);
             }
-            context_free_content(context_);
-            context_destroy(context_);
         }
         
     }
@@ -102,8 +62,8 @@ public:
 private:
     su_socket fd_;
     struct context *context_{nullptr};
-    struct connection *con_{nullptr};
     ImageDelegate *delegate_{nullptr};
+    struct connection *con_{nullptr};
 };
 class TcpServer{
 public:
@@ -114,6 +74,7 @@ public:
             std::cout<<"tcp server fd failed"<<std::endl;
             abort();
         }
+        context_=(struct context*)context_new(mbuf_size);
         su_socket_noblocking(listenfd_);
         epfd_ = epoll_create(256);
         struct epoll_event ev;
@@ -131,6 +92,10 @@ public:
             delete client;
         }
         su_socket_destroy(listenfd_);
+        if(context_){
+            context_free_content(context_);
+            context_destroy(context_);            
+        }
     }
     void Stop(){
         running_=false;
@@ -148,7 +113,7 @@ public:
                     su_socket con_fd=su_accept(listenfd_,&addr,&addr_len);
                     std::cout<<"new con"<<std::endl;
                     su_socket_noblocking(con_fd);
-                    TcpClient *client=new TcpClient(con_fd);
+                    TcpClient *client=new TcpClient(con_fd,context_);
                     clients_.insert(std::make_pair(con_fd,client));
                     struct epoll_event ev;
                     ev.data.fd=con_fd;                //设置用于读操作的文件描述符
@@ -163,14 +128,14 @@ public:
                         uint8_t buf[1500];
                         n=su_tcp_recv(con_fd,buf,1500);
                         if(n<=0){
-                            std::cout<<"con close"<<std::endl;
+                            std::cout<<"con close in epoll in"<<std::endl;
                             su_socket_destroy(con_fd);
                             struct epoll_event ev;
                             epoll_ctl(epfd_, EPOLL_CTL_DEL, events[i].data.fd, &ev);
                         }
-			auto it=clients_.find(con_fd);
+                        auto it=clients_.find(con_fd);
                         if(n>0){
-			   std::cout<<"in "<<n<<std::endl;
+                        std::cout<<"in "<<n<<std::endl;
                             if(it!=clients_.end()){
                                 it->second->OnNewData(buf,n);
                             }
@@ -191,7 +156,7 @@ public:
 			}
     }
             if(events[i].events&EPOLLRDHUP){
-            std::cout<<"con close"<<std::endl;
+            std::cout<<"con close in hup"<<std::endl;
             su_socket_destroy(con_fd);
             struct epoll_event ev;
             epoll_ctl(epfd_, EPOLL_CTL_DEL, events[i].data.fd, &ev);                
@@ -202,6 +167,7 @@ public:
     }
 private:
     bool running_{true};
+    struct context *context_{nullptr};
     su_socket listenfd_;
     int epfd_;
     std::map<int,TcpClient*> clients_;
