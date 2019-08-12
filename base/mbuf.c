@@ -69,35 +69,35 @@ void mbuf_recycle(struct context *ctx, struct mbuf *mbuf)
     ctx->mstats.free_buffers++;
 }
 
-int mbuf_read_size(struct mbuf *mbuf)
+int mbuf_read_size(struct mbuf *buf)
 {
-    return (int)(mbuf->last - mbuf->pos);
+    return (int)(buf->last - buf->pos);
 }
 
-int mbuf_write_size(struct mbuf *mbuf)
+int mbuf_write_size(struct mbuf *buf)
 {
-    return (int)(mbuf->end - mbuf->last);
+    return (int)(buf->end - buf->last);
 }
-int mbuf_write(struct mbuf * mbuf,void *data,int len){
-    if(mbuf->last==mbuf->end) return 0;
-    int remain=mbuf_write_size(mbuf);
+int mbuf_write(struct mbuf * buf,void *data,int len){
+    int remain=mbuf_write_size(buf);
+    if(!remain) return 0;
     int write=remain>len?len:remain;
-    memcpy(mbuf->last,data,write);
-    mbuf->last+=write;
+    memcpy(buf->last,data,write);
+    buf->last+=write;
     return write;
 }
-int mbuf_read(struct mbuf * mbuf,void*dst,int len){
-    int read=mbuf_peek(mbuf,dst,len);
-    mbuf->pos+=read;
+int mbuf_read(struct mbuf * buf,void*dst,int len){
+    int read=mbuf_peek(buf,dst,len);
+    buf->pos+=read;
     return read;
 }
-int mbuf_peek(struct mbuf * mbuf,void*dst,int len){
+int mbuf_peek(struct mbuf * buf,void*dst,int len){
     int ret=0;
-    int read=mbuf_read_size(mbuf);
+    int read=mbuf_read_size(buf);
     if(read){
         int copy=read>len?len:read;
         ret=copy;
-        memcpy(dst,mbuf->pos,copy);
+        memcpy(dst,buf->pos,copy);
     }
     return ret;
 }
@@ -111,9 +111,9 @@ void mbuf_destroy(struct context *ctx)
         ctx->mstats.free_buffers--;
     }
 }
-bool mbuf_can_recycle(struct mbuf * mbuf){
+bool mbuf_can_recycle(struct mbuf * buf){
     bool ret=false;
-    if((mbuf_read_size(mbuf)==0)&&(mbuf_write_size(mbuf)==0)){
+    if((mbuf_read_size(buf)==0)&&(mbuf_write_size(buf)==0)){
         ret=true;
     }
     return ret;

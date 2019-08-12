@@ -76,7 +76,7 @@ struct con_info * con_info_new(struct context *ctx)
     }
     TAILQ_INIT(&info->data);
     info->ctx=ctx;
-    info->current_mbuf=NULL;
+    //info->current_mbuf=NULL;
     ctx->mstats.conn_info++;
     return info;
 
@@ -137,7 +137,7 @@ void con_buf_write(struct connection *con,void*data,int len)
 {
 
     if(len==0) return;
-    struct mbuf *buf;
+    struct mbuf *buf=NULL;
     int num_to_write=len;
     void *data_ptr=data;
     struct con_info *info=con->info;
@@ -145,15 +145,20 @@ void con_buf_write(struct connection *con,void*data,int len)
         info=con_info_new(con->ctx);
 
     con->info=info;
-    buf=info->current_mbuf;
-    if(buf==NULL||(buf->end-buf->last)==0)
+    //buf=info->current_mbuf;
+    struct mhdr *head=&info->data;
+    if(!TAILQ_EMPTY(head)){
+        buf=TAILQ_LAST(head,mhdr);
+    }
+    if(buf==NULL||(mbuf_write_size(buf))==0)
     {
         buf=mbuf_get(con->ctx);
         buf->queue=&info->data;
         TAILQ_INSERT_TAIL(&info->data,buf,next);
-        info->current_mbuf=buf;
+        //info->current_mbuf=buf;
     }
-    buf=info->current_mbuf;
+    //buf=info->current_mbuf;
+    buf=TAILQ_LAST(head,mhdr);
   int write=0;
   while(num_to_write!=0)
   {
@@ -173,7 +178,7 @@ void con_buf_write(struct connection *con,void*data,int len)
                     buf=mbuf_get(con->ctx);
                     buf->queue=&info->data;
                     TAILQ_INSERT_TAIL(&info->data,buf,next);
-                    info->current_mbuf=buf;
+                    //info->current_mbuf=buf;
                 }
 
         }
@@ -206,17 +211,21 @@ int  con_buf_read(struct connection *con,void *dst,int len)
     }
     }
     con->data_size-=read;
+    //if all mbufs are full and all recycled, reset current mbuf
+    /*if(TAILQ_EMPTY(&info->data)){
+        info->current_mbuf=NULL;
+    }*/
     return read;
 }
 int con_buf_peek(struct connection *con,void *dst,int len){
-    struct mbuf *mbuf=NULL;
+    struct mbuf *buf=NULL;
     struct con_info *info=con->info;
     int ret=0;
     if(info){
-        TAILQ_FOREACH(mbuf,&info->data,next){
-            int tmp=mbuf_read_size(mbuf);
+        TAILQ_FOREACH(buf,&info->data,next){
+            int tmp=mbuf_read_size(buf);
             int read=tmp>len?len:tmp;
-            mbuf_peek(mbuf,dst,read);
+            mbuf_peek(buf,dst,read);
             ret+=read;
             dst+=read;
             len-=read;

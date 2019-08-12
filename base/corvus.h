@@ -18,7 +18,7 @@ struct memory_stats {
 };
 struct con_info
 {
-    struct mbuf *current_mbuf;
+    //struct mbuf *current_mbuf;
     struct mhdr data;
     STAILQ_ENTRY(con_info)  next;
     struct context*ctx;

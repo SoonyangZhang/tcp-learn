@@ -32,10 +32,10 @@ struct mbuf *mbuf_get(struct context *);
 void mbuf_recycle(struct context *, struct mbuf *);
 int mbuf_read_size(struct mbuf *);
 int mbuf_write_size(struct mbuf *);
-int mbuf_write(struct mbuf * mbuf,void *data,int len);
-int mbuf_read(struct mbuf * mbuf,void*dst,int len);
-int mbuf_peek(struct mbuf * mbuf,void*dst,int len);
-bool mbuf_can_recycle(struct mbuf * mbuf);
+int mbuf_write(struct mbuf * buf,void *data,int len);
+int mbuf_read(struct mbuf * buf,void*dst,int len);
+int mbuf_peek(struct mbuf * buf,void*dst,int len);
+bool mbuf_can_recycle(struct mbuf * buf);
 bool mhdr_readable(struct mhdr *header);
 #ifdef __cplusplus
 }
