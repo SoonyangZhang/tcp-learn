@@ -78,8 +78,8 @@ public:
         su_socket_noblocking(listenfd_);
         epfd_ = epoll_create(256);
         struct epoll_event ev;
-        ev.data.fd = listenfd_;          //设置与要处理的事件相关的文件描述符
-        ev.events = EPOLLIN | EPOLLET;  //设置要处理的事件类型
+        ev.data.fd = listenfd_;
+        ev.events = EPOLLIN | EPOLLET;
         epoll_ctl(epfd_, EPOLL_CTL_ADD, listenfd_, &ev);
         
     }
@@ -116,7 +116,7 @@ public:
                     TcpClient *client=new TcpClient(con_fd,context_);
                     clients_.insert(std::make_pair(con_fd,client));
                     struct epoll_event ev;
-                    ev.data.fd=con_fd;                //设置用于读操作的文件描述符
+                    ev.data.fd=con_fd;
                     ev.events=EPOLLIN|EPOLLRDHUP|EPOLLET;      //EPOLLLT EPOLLET that's matters 
                     //https://blog.csdn.net/qcghdy/article/details/22791077
                     //https://github.com/yedf/handy/blob/master/raw-examples/epoll-et.cc
